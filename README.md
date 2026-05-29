@@ -43,6 +43,17 @@ To simulate admin and delegate roles, import these accounts into MetaMask using 
 - Delegate 3 (Da Nang): `0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6`
 
 ## Demo Walkthrough Guide
-1. Secretary (Admin - Account #0): Manage the delegate whitelist, draft new bills, and open/close voting phases on the Secretary Portal.
-2. Assembly Delegates (Account #1, #2, #3): Cast anonymous votes (Yes, No, Abstain) on open bills on the Delegate Portal.
-3. Citizens and Auditors (Public): Monitor live aggregated voting statistics and inspect cryptographic transaction hashes for auditing purposes.
+1. **Secretary (Admin - Account #0)**: Manage the delegate whitelist, draft new legislative bills, and open/close voting phases on the Secretary Portal.
+2. **Assembly Delegates (Account #1, #2, #3)**: Cast anonymous votes (Yes, No, Abstain) on open bills on the Delegate Portal.
+3. **AI Legislative Assistant**: Open the **AI Assistant** tab to select any draft bill. Click **Analyze Bill with AI** to view real-time automated summaries, key provisions, socio-economic impact forecasts, and legal compliance checks mapping directly to the Vietnamese National Assembly election codes.
+4. **Citizens and Auditors (Public)**: Monitor live aggregated voting statistics and inspect cryptographic transaction hashes for auditing purposes.
+
+## AI Legislative Assistant Architecture
+
+The application integrates an AI-driven cognitive assistant designed to aid delegates in evaluating complex draft laws.
+
+- **Objective Summaries**: Automatically condenses long legislative text into distinct, objective summaries.
+- **Turnout Impact & Analysis**: Evaluates potential socio-economic impacts and projects delegate participation metrics.
+- **Legal Compliance Checks**: Cross-references draft articles with statutory constraints (e.g., Article 15 of the Law on National Assembly Elections in Vietnam).
+- **Deterministic & Safe System Prompting**: Configured with low temperature outputs ($T=0.2$) and localized XML input parsing guards to prevent hallucination and prompt injection attacks.
+
