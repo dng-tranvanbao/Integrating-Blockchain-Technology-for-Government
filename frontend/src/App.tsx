@@ -4,13 +4,15 @@ import Dashboard from "./pages/Dashboard";
 import DelegatePortal from "./pages/DelegatePortal";
 import AdminPortal from "./pages/AdminPortal";
 import PublicAnalytics from "./pages/PublicAnalytics";
+import AIAssistant from "./pages/AIAssistant";
 import { 
   LayoutDashboard, 
   Vote, 
   ShieldAlert, 
   BarChart3, 
   Wallet, 
-  RefreshCw 
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
 
 const App: React.FC = () => {
@@ -27,6 +29,8 @@ const App: React.FC = () => {
         return <AdminPortal />;
       case "analytics":
         return <PublicAnalytics />;
+      case "ai-assistant":
+        return <AIAssistant />;
       default:
         return <Dashboard />;
     }
@@ -77,6 +81,16 @@ const App: React.FC = () => {
                 </button>
               </li>
             )}
+
+            <li>
+              <button 
+                className={`menu-item ${activeTab === "ai-assistant" ? "active" : ""}`}
+                onClick={() => setActiveTab("ai-assistant")}
+              >
+                <Sparkles size={20} />
+                <span>AI Assistant</span>
+              </button>
+            </li>
 
             <li>
               <button 
