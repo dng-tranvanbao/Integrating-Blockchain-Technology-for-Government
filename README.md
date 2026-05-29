@@ -57,3 +57,28 @@ The application integrates an AI-driven cognitive assistant designed to aid dele
 - **Legal Compliance Checks**: Cross-references draft articles with statutory constraints (e.g., Article 15 of the Law on National Assembly Elections in Vietnam).
 - **Deterministic & Safe System Prompting**: Configured with low temperature outputs ($T=0.2$) and localized XML input parsing guards to prevent hallucination and prompt injection attacks.
 
+## Application Screenshots
+
+Below are the screenshots showcasing the application's user interface and functional portals:
+
+### 1. Parliamentary Dashboard
+Displays real-time voter turnout, proposal tallies, active bills, and whitelisted delegate profiles.
+<img src="images/ui_dashboard.png" width="800" alt="Parliamentary Dashboard" />
+
+### 2. Assembly Delegate Portal
+Enables delegates to cast anonymous votes (Yes, No, Abstain) securely with MetaMask integration.
+<img src="images/ui_delegate.png" width="800" alt="Assembly Delegate Portal" />
+
+### 3. Secretary Portal (Administrative Panel)
+Allows the election commission to whitelist/deactivate delegates and control proposal voting states.
+<img src="images/ui_admin.png" width="800" alt="Secretary Portal" />
+
+### 4. Public Analytics & Audit Page
+Provides citizens and auditors with live vote aggregations and direct transaction hash mappings for universal audibility.
+<img src="images/ui_analytics.png" width="800" alt="Public Analytics Page" />
+
+### 5. AI Legislative Assistant Portal
+Displays automated, unbiased draft summaries, key provisions, and compliance recommendations.
+<img src="images/ui_ai_assistant.png" width="800" alt="AI Legislative Assistant" />
+
+
