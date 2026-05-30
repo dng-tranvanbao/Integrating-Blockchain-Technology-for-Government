@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useWeb3 } from "../context/Web3Context";
-import { Sparkles, BrainCircuit, FileText, ArrowRight, ShieldCheck, RefreshCw } from "lucide-react";
+import { 
+  Sparkles, 
+  BrainCircuit, 
+  FileText, 
+  ArrowRight, 
+  ShieldCheck, 
+  RefreshCw, 
+  Settings, 
+  Eye, 
+  EyeOff, 
+  Save, 
+  AlertTriangle 
+} from "lucide-react";
 
 interface AISummary {
   title: string;
@@ -16,89 +28,219 @@ const AIAssistant: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<string>("");
   const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
+  
+  // Configuration Settings States
+  const [showSettings, setShowSettings] = useState(false);
+  const [provider, setProvider] = useState<string>(() => {
+    return import.meta.env.VITE_AI_PROVIDER || localStorage.getItem("ai_provider") || "github";
+  });
+  const [apiKey, setApiKey] = useState<string>(() => {
+    return import.meta.env.VITE_AI_API_KEY || localStorage.getItem("ai_api_key") || "";
+  });
+  const [model, setModel] = useState<string>(() => {
+    return import.meta.env.VITE_AI_MODEL || localStorage.getItem("ai_model") || "gpt-4o-mini";
+  });
+  const [showKey, setShowKey] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const proposal = proposals.find((p) => p.id === selectedPropId) || proposals[0];
 
-  // Detailed mock AI summaries tailored for legislative proposals
-  const generateMockAnalysis = (title: string, description: string): AISummary => {
-    // Custom responses based on known proposals, fall back to dynamic generation
-    if (title.toLowerCase().includes("cybersecurity")) {
-      return {
-        title: title,
-        summary: "This draft legislation aims to establish a comprehensive legal framework to safeguard national digital sovereignty. It defines legal parameters for protecting critical national information infrastructures (CNII), details state requirements for data localization, and outlines strict measures for combating cyber-terrorism, digital espionage, and high-tech criminal behaviors.",
-        keyPoints: [
-          "Establishes strict compliance standards for critical infrastructure providers (energy, finance, telecommunications, government services).",
-          "Mandates local data storage requirements for personal identification data of citizens collected by multinational digital platforms.",
-          "Defines official response mechanisms for cyber emergency response teams (CERT) during coordinated national security incidents.",
-          "Clarifies legal penalties for spreading malware, hacking governmental nodes, or coordinating distributed denial of service (DDoS) attacks."
-        ],
-        impact: "Improves national defensive cyber posture by 45% within the first fiscal year, but increases compliance costs for private enterprise and requires substantial governmental coordination across ministries.",
-        status: "Highly recommended for ratification due to urgent security vulnerabilities in current legal frameworks."
-      };
-    } else if (title.toLowerCase().includes("land")) {
-      return {
-        title: title,
-        summary: "An expansive reform bill modifying land usage, ownership valuation models, and public reclamation guidelines. It seeks to resolve local disputes, streamline national infrastructure acquisition processes, and introduce digital registry mechanisms to prevent ownership fraud and optimize agrarian land resource allocation.",
-        keyPoints: [
-          "Standardizes land pricing models to match market values, reducing discrepancies during public interest reclamation.",
-          "Establishes electronic, tamper-proof land registration records (ideally prepared for blockchain metadata integration).",
-          "Strengthens rights for agricultural workers, extending lease options to promote long-term domestic farming investments.",
-          "Simplifies zoning regulations to expedite municipal commercial developments and public utility construction."
-        ],
-        impact: "Reduces administrative land transfer overheads by 30%, mitigates municipal legal disputes, and provides a stable framework for international real estate developers.",
-        status: "Passes constitutional compliance checks. Recommended to proceed with minor revisions in zoning sections."
-      };
-    } else {
-      // Dynamic fallback for any custom proposals created by the user
-      return {
-        title: title,
-        summary: `This AI agent has analyzed the draft legislation titled '${title}'. The core objective of this bill is to address administrative bottlenecks and introduce legal reforms as described: ${description}. It establishes regulatory protocols to govern this domain under public interest guidelines.`,
-        keyPoints: [
-          "Proposes structural changes to current administrative procedures within this specific sector.",
-          "Details verification and auditing standards to prevent abuse or resource mismanagement.",
-          "Establishes reporting guidelines for key public stakeholders and municipal authorities.",
-          "Defines legal penalties for non-compliance and outlines transition timelines for enforcement."
-        ],
-        impact: "Increases operational efficiency, ensures higher transparency, and sets up a robust oversight framework.",
-        status: "Structurally sound. Recommended for active voting phase to gauge assembly consensus."
-      };
+  // Adjust model automatically when provider changes
+  useEffect(() => {
+    const githubModels = ["gpt-4o-mini", "gpt-4o", "meta-llama-3.1-405b-instruct", "cohere-command-r-plus", "phi-3-medium-instruct"];
+    const geminiModels = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"];
+    const openaiModels = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"];
+
+    if (provider === "github") {
+      if (!githubModels.includes(model)) setModel("gpt-4o-mini");
+    } else if (provider === "gemini") {
+      if (!geminiModels.includes(model)) setModel("gemini-2.5-flash");
+    } else if (provider === "openai") {
+      if (!openaiModels.includes(model)) setModel("gpt-4o-mini");
     }
+  }, [provider]);
+
+  // Clear summaries when proposal selection changes
+  useEffect(() => {
+    setAiSummary(null);
+    setErrorMessage(null);
+  }, [selectedPropId]);
+
+  const handleSaveSettings = () => {
+    localStorage.setItem("ai_provider", provider);
+    localStorage.setItem("ai_api_key", apiKey);
+    localStorage.setItem("ai_model", model);
+    setSaveSuccess(true);
+    setErrorMessage(null);
+    setTimeout(() => setSaveSuccess(false), 2000);
   };
 
-  const handleStartAnalysis = () => {
+  const handleClearSettings = () => {
+    localStorage.removeItem("ai_provider");
+    localStorage.removeItem("ai_api_key");
+    localStorage.removeItem("ai_model");
+    setApiKey("");
+    setProvider("github");
+    setModel("gpt-4o-mini");
+    setSaveSuccess(true);
+    setErrorMessage(null);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  const handleStartAnalysis = async () => {
     if (!proposal) return;
-    
+    if (!apiKey) {
+      setErrorMessage("Please configure your API Key or Personal Access Token in the settings panel above.");
+      setShowSettings(true);
+      return;
+    }
+
     setIsAnalyzing(true);
     setAiSummary(null);
-    
-    // Simulate multi-stage AI reasoning process
-    const stages = [
-      "Initializing AI Legislative Auditor...",
-      "Reading smart contract variables and historical blocks...",
-      "Parsing proposal title and description texts...",
-      "Cross-referencing constitutional precedents and legal frameworks...",
-      "Evaluating legislative impact and drafting summary report..."
-    ];
+    setErrorMessage(null);
 
-    let currentStage = 0;
-    setAnalysisProgress(stages[0]);
+    const systemPrompt = `You are an expert AI Legislative Auditor and Legal Analyst. Your job is to analyze legislative proposals and generate structured summaries and assessments.
+You must return your analysis as a valid, raw JSON object matching this schema:
+{
+  "title": "The exact title of the legislative proposal",
+  "summary": "A comprehensive summary of the legislative proposal, explaining its core purpose, background, and scope in 3-4 clear sentences.",
+  "keyPoints": [
+    "Key provision 1 explaining what changes are mandated",
+    "Key provision 2 explaining compliance standards or regulatory bodies established",
+    "Key provision 3 explaining enforcement timelines or legal penalties",
+    "Key provision 4 explaining other significant measures"
+  ],
+  "impact": "A detailed 2-sentence assessment of the social, economic, legal, and operational impact of this bill.",
+  "status": "A clear compliance and recommendation status (e.g., 'Highly recommended', 'Recommended with minor revisions', 'Pending legal review')."
+}
+Ensure you do NOT wrap the response in markdown blocks like \`\`\`json or any other formatting. Return only the raw JSON string.`;
 
-    const interval = setInterval(() => {
-      currentStage++;
-      if (currentStage < stages.length) {
-        setAnalysisProgress(stages[currentStage]);
-      } else {
-        clearInterval(interval);
-        setAiSummary(generateMockAnalysis(proposal.title, proposal.description));
-        setIsAnalyzing(false);
+    try {
+      setAnalysisProgress("Preparing legislative proposal details...");
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      setAnalysisProgress(`Connecting to AI Provider: ${provider === 'github' ? 'GitHub Models' : provider === 'gemini' ? 'Gemini API' : 'OpenAI API'}...`);
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      setAnalysisProgress("Awaiting analysis response from model...");
+
+      let textResult = "";
+      if (provider === "github") {
+        const response = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `Please analyze this legislative bill:\nTitle: ${proposal.title}\nDescription: ${proposal.description}` }
+            ],
+            model: model,
+            temperature: 0.2
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || `HTTP error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        textResult = data.choices?.[0]?.message?.content || "";
+
+      } else if (provider === "gemini") {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: `${systemPrompt}\n\nPlease analyze this legislative bill:\nTitle: ${proposal.title}\nDescription: ${proposal.description}` }
+                ]
+              }
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.2
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `HTTP error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      } else if (provider === "openai") {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `Please analyze this legislative bill:\nTitle: ${proposal.title}\nDescription: ${proposal.description}` }
+            ],
+            model: model,
+            response_format: { type: "json_object" },
+            temperature: 0.2
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `HTTP error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        textResult = data.choices?.[0]?.message?.content || "";
       }
-    }, 900);
-  };
 
-  useEffect(() => {
-    // Clear old summaries when proposal selection changes
-    setAiSummary(null);
-  }, [selectedPropId]);
+      setAnalysisProgress("Parsing and formatting audit report...");
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      if (!textResult) {
+        throw new Error("Received empty response from the AI provider.");
+      }
+
+      // Robust clean formatting for LLM returns
+      let cleanJson = textResult.trim();
+      if (cleanJson.startsWith("```")) {
+        const firstNewline = cleanJson.indexOf("\n");
+        if (firstNewline !== -1) {
+          cleanJson = cleanJson.slice(firstNewline).trim();
+        } else {
+          cleanJson = cleanJson.slice(3).trim();
+        }
+      }
+      if (cleanJson.endsWith("```")) {
+        cleanJson = cleanJson.slice(0, -3).trim();
+      }
+      if (cleanJson.startsWith("json")) {
+        cleanJson = cleanJson.slice(4).trim();
+      }
+
+      const parsed: AISummary = JSON.parse(cleanJson);
+      setAiSummary(parsed);
+    } catch (err: any) {
+      console.error("AI Analysis failed:", err);
+      setErrorMessage(err.message || "An unexpected error occurred during AI analysis. Please double-check your credentials and connection.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <div>
@@ -111,6 +253,146 @@ const AIAssistant: React.FC = () => {
           <Sparkles size={16} /> AI Auditor Active
         </div>
       </div>
+
+      {/* Settings Panel */}
+      <div className="glass-panel" style={{ padding: "1.25rem 1.75rem", marginBottom: "2rem" }}>
+        <div 
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} 
+          onClick={() => setShowSettings(!showSettings)}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Settings size={20} style={{ color: "var(--accent-gold)" }} />
+            <h3 style={{ fontSize: "1.1rem", fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>AI Configuration Settings</h3>
+          </div>
+          <span style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
+            {showSettings ? "Hide Settings ▲" : "Show Settings ▼"}
+          </span>
+        </div>
+
+        {showSettings && (
+          <div style={{ marginTop: "1.25rem", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "1.25rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.25rem" }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600 }}>AI Provider</label>
+                <select className="form-input" value={provider} onChange={(e) => setProvider(e.target.value)}>
+                  <option value="github">GitHub Models (Free with GitHub token)</option>
+                  <option value="gemini">Google Gemini API (Studio key)</option>
+                  <option value="openai">OpenAI API</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600 }}>AI Model</label>
+                <select className="form-input" value={model} onChange={(e) => setModel(e.target.value)}>
+                  {provider === "github" && (
+                    <>
+                      <option value="gpt-4o-mini">GPT-4o Mini (Recommended)</option>
+                      <option value="gpt-4o">GPT-4o</option>
+                      <option value="meta-llama-3.1-405b-instruct">Llama 3.1 405B</option>
+                      <option value="cohere-command-r-plus">Cohere Command R+</option>
+                      <option value="phi-3-medium-instruct">Phi-3 Medium</option>
+                    </>
+                  )}
+                  {provider === "gemini" && (
+                    <>
+                      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                      <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                      <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    </>
+                  )}
+                  {provider === "openai" && (
+                    <>
+                      <option value="gpt-4o-mini">GPT-4o Mini</option>
+                      <option value="gpt-4o">GPT-4o</option>
+                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1.25rem" }}>
+              <label className="form-label" style={{ fontWeight: 600 }}>API Key / Access Token</label>
+              <div style={{ position: "relative" }}>
+                <input 
+                  type={showKey ? "text" : "password"} 
+                  className="form-input" 
+                  style={{ paddingRight: "40px" }}
+                  placeholder={
+                    provider === "github" 
+                      ? "Paste GitHub Personal Access Token (ghp_...)" 
+                      : provider === "gemini" 
+                      ? "Paste Google AI Studio API Key" 
+                      : "Paste OpenAI API Key (sk-...)"
+                  }
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    color: "var(--color-text-secondary)",
+                    cursor: "pointer"
+                  }}
+                >
+                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <small style={{ display: "block", color: "var(--color-text-muted)", marginTop: "6px", fontSize: "0.8rem" }}>
+                {provider === "github" ? (
+                  <span>
+                    No scopes needed! Create a classic token in{" "}
+                    <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-gold)", textDecoration: "underline" }}>
+                      GitHub settings
+                    </a>.
+                  </span>
+                ) : provider === "gemini" ? (
+                  <span>
+                    Generate your key in{" "}
+                    <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-gold)", textDecoration: "underline" }}>
+                      Google AI Studio
+                    </a>.
+                  </span>
+                ) : (
+                  <span>
+                    Manage keys in your{" "}
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-gold)", textDecoration: "underline" }}>
+                      OpenAI dashboard
+                    </a>.
+                  </span>
+                )}
+              </small>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <button className="btn-primary" onClick={handleSaveSettings}>
+                <Save size={16} /> Save Settings
+              </button>
+              <button className="btn-secondary" onClick={handleClearSettings}>
+                Clear Credentials
+              </button>
+              {saveSuccess && (
+                <span style={{ color: "var(--color-success)", fontSize: "0.9rem", marginLeft: "10px" }}>
+                  ✓ Settings saved successfully!
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {errorMessage && (
+        <div className="notification-banner warning" style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "2rem" }}>
+          <AlertTriangle size={20} />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       {proposals.length === 0 ? (
         <div className="glass-panel" style={{ padding: "3rem", textAlign: "center" }}>
@@ -159,7 +441,7 @@ const AIAssistant: React.FC = () => {
 
           {/* AI Loader */}
           {isAnalyzing && (
-            <div className="glass-panel" style={{ padding: "3rem 2rem", textAlign: "center", animation: "pulse 2s infinite" }}>
+            <div className="glass-panel" style={{ padding: "3rem 2rem", textAlign: "center" }}>
               <div className="spinner" style={{ width: "40px", height: "40px", borderTopColor: "#7c3aed", margin: "0 auto 1.5rem auto" }}></div>
               <p style={{ color: "var(--accent-gold)", fontWeight: 500, fontSize: "1.05rem" }}>{analysisProgress}</p>
               <p style={{ color: "var(--color-text-muted)", fontSize: "0.85rem", marginTop: "8px" }}>This might take a few seconds...</p>
@@ -184,7 +466,7 @@ const AIAssistant: React.FC = () => {
               <div style={{ marginBottom: "1.75rem" }}>
                 <h4 style={{ fontSize: "0.95rem", color: "#a78bfa", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Key Provisions & Measures</h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {aiSummary.keyPoints.map((point, idx) => (
+                  {aiSummary.keyPoints && aiSummary.keyPoints.map((point, idx) => (
                     <div key={idx} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                       <ArrowRight size={16} style={{ color: "var(--accent-gold)", marginTop: "4px", flexShrink: 0 }} />
                       <p style={{ color: "var(--color-text-secondary)", margin: 0, fontSize: "0.92rem", lineHeight: "1.5" }}>{point}</p>
